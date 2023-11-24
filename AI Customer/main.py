@@ -24,7 +24,7 @@ client = qx.QuixStreamingClient()
 
 # Open a topic to publish data to
 topic_producer = client.get_topic_producer(topic)
-topic_consumer = client.get_topic_consumer(topic)
+topic_consumer = client.get_topic_consumer(topic, "v11", auto_offset_reset=qx.AutoOffsetReset.Earliest)
 
 product = os.environ["product"]
 scenario = f"The following transcript represents a conversation between you, a customer of a large electronics retailer called 'ACME electronics', and a support agent who you are contacting to resolve an issue with a defective {product} you purchased. Your goal is try and understand what your options are for resolving the issue. Please continue the conversation, but only reply as CUSTOMER:"
@@ -43,11 +43,15 @@ def generate_response(prompt, max_tokens=250, temperature=0.7, top_p=0.95, repea
         max_tokens=max_tokens,
         temperature=temperature,
         top_p=top_p,
+        #stream=True,
         stop=["AGENT:","CUSTOMER:","\n"],
         repeat_penalty=repeat_penalty,
         top_k=top_k,
         echo=True
     )
+
+    #for iteration in response:
+        #print(iteration["choices"][0]["text"])
 
     return response["choices"][0]["text"]
 
@@ -74,7 +78,7 @@ def update_conversation(text, role, conversation_id, filename="conversation.json
 
     # Include the conversation history as part of the prompt
     full_history = "\n".join([f"{msg['role'].upper()}: {msg['text']}" for msg in conversation_history])
-    prompt = scenario + '\n\n' + full_history + f'\nAGENT:{text}' + '\nCUSTOMER:'
+    prompt = scenario + '\n\n' + full_history[-250:] + f'\nAGENT:{text}' + '\nCUSTOMER:'
 
     # Generate the reply using the AI model
     print("Thinking about my response....")
@@ -107,7 +111,7 @@ def publish_rp(response):
     df = pd.DataFrame(chatmessage)
 
     print("Publising stream...")
-    stream.timeseries.buffer.publish(df)
+    #stream.timeseries.buffer.publish(df)
     print("Published")
 
 print("Listening for messages...")
